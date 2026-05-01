@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor / OS scratch files
+*~
+*.swp
+.vscode/
+.idea/
+Thumbs.db

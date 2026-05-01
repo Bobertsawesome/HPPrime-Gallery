@@ -99,16 +99,32 @@ END;
 
 
 //----Open File Dialog----
+// CHOOSE returns 1 when the user picks an item, 0 when they cancel.
+// Open_File indexes FILE_LIST[CURRENT_FILE], so calling it on cancel
+// would read FILE_LIST[0] (or a stale value) and crash/misbehave.
+//
+// We loop here so that pressing [ON] in the image viewer falls back
+// to this dialog without recursing through Read_Keyboard's tail —
+// previously each [ON] press added a stack frame.
 VIEW "Open Files",Open_File_Dialog()
 BEGIN
-  IF length(FILE_LIST)>0
+  LOCAL DONE_BROWSING:=0;
+  IF length(FILE_LIST)==0
   THEN
-    CHOOSE(CURRENT_FILE, "Select File to Open", FILE_LIST);
-    Open_File();
-  ELSE
     MSGBOX("There are no files to open.");
     START();
+    RETURN;
   END;
+
+  REPEAT
+    IF CHOOSE(CURRENT_FILE, "Select File to Open", FILE_LIST)
+    THEN
+      Open_File();
+    ELSE
+      DONE_BROWSING:=1;
+    END;
+  UNTIL DONE_BROWSING==1;
+  START();
 END;
 
 
@@ -211,28 +227,22 @@ BEGIN
 
     //Next Image [DPad Right]
     IF PRESSED_KEY==8
-    THEN 
-      CURRENT_FILE:=CURRENT_FILE+1;
-
-      IF CURRENT_FILE>=length(FILE_LIST)
+    THEN
+      IF CURRENT_FILE<length(FILE_LIST)
       THEN
-        CURRENT_FILE:=length(FILE_LIST);
+        CURRENT_FILE:=CURRENT_FILE+1;
+        Open_File();
       END;
-
-      Open_File();
     END;
 
     //Previous Image [DPad Left]
     IF PRESSED_KEY==7
     THEN
-      CURRENT_FILE:=CURRENT_FILE-1;
-
-      IF CURRENT_FILE<=0
+      IF CURRENT_FILE>1
       THEN
-        CURRENT_FILE:=1;
+        CURRENT_FILE:=CURRENT_FILE-1;
+        Open_File();
       END;
-
-      Open_File();
     END;
 
 
@@ -317,22 +327,21 @@ BEGIN
     //Poll Touch Gestures
     Touch_Gestures();
 
-    //Exit REPEAT loop when pressed [ON] or [ESC]
+    //Exit REPEAT loop when [ON]/Cancel is pressed (key 46).
+    //(The original code also exited on key 4 with a comment of "ESC",
+    //but key 4 on the HP Prime is [View], not Escape, and the README
+    //documents [ON] as the exit key. The [View] handler is left to the
+    //OS so users can open the app's view menu normally.)
     IF PRESSED_KEY==46
     THEN
       STOP_GALLERY:=1;
     END;
 
-    IF PRESSED_KEY==4
-    THEN
-      STOP_GALLERY:=1;
-    END;
-
   UNTIL STOP_GALLERY==1;
-  Open_File_Dialog();
-  START();
-  RETURN;
-
+  // Just RETURN. The caller (Open_File, called from Open_File_Dialog's
+  // loop) handles re-prompting for the next file. Don't call
+  // Open_File_Dialog/START here — that path used to nest a stack frame
+  // per [ON] press.
 END;
 
 
@@ -362,6 +371,9 @@ END;
 
 
 //----Delete All Files----
+// FILE_LIST already excludes icon.png (see START), so we can iterate it
+// directly. Iterating AFiles() while deleting from it shifts indices
+// under our feet; iterating the snapshot avoids that.
 Delete_All_Files()
 BEGIN
   LOCAL USER_CHOICE:=0;
@@ -369,15 +381,9 @@ BEGIN
 
   IF USER_CHOICE==1
   THEN
-    LOCAL LAST_ELEMENT:=length(AFiles())-1;
-    FOR I FROM 1 TO LAST_ELEMENT STEP 1
-    DO 
-      IF (AFiles(1)<>"icon.png")
-      THEN
-        DelAFiles(AFiles(1));
-      ELSE
-        DelAFiles(AFiles(2));
-      END;
+    FOR I FROM 1 TO length(FILE_LIST) STEP 1
+    DO
+      DelAFiles(FILE_LIST[I]);
     END;
     MSGBOX("All Files were Deleted!");
     START();
@@ -441,10 +447,13 @@ BEGIN
     END;
 
     IF IMAGE_HEIGHT<240
-    THEN 
+    THEN
+      // Guard against a sub-100px dimension: 1% of <100 truncates to 0
+      // under integer arithmetic and the loop never converges. MAX(_,1)
+      // forces a minimum step of 1px per iteration.
       REPEAT
-        IMAGE_WIDTH:=IMAGE_WIDTH+(IMAGE_WIDTH/100);
-        IMAGE_HEIGHT:=IMAGE_HEIGHT+(IMAGE_HEIGHT/100);
+        IMAGE_WIDTH:=IMAGE_WIDTH+MAX(IMAGE_WIDTH/100,1);
+        IMAGE_HEIGHT:=IMAGE_HEIGHT+MAX(IMAGE_HEIGHT/100,1);
       UNTIL IMAGE_HEIGHT>240;
     END;
 
@@ -567,73 +576,72 @@ END;
 
 
 //----Touch Gestures----
+// Returns when no touch is active or the user lifts their finger.
+// Must NOT call Read_Keyboard() — Read_Keyboard's main loop calls
+// Touch_Gestures every iteration, so re-entering it here grows the
+// call stack until the calculator runs out of memory.
 Touch_Gestures()
 BEGIN
   X_AXIS_TOUCH:=(HMS→(MOUSE(2)));
   Y_AXIS_TOUCH:=(HMS→(MOUSE(3)));
 
-  IF X_AXIS_TOUCH==-1
-  THEN 
-  ELSE
-    REPEAT
+  IF X_AXIS_TOUCH==-1 THEN RETURN; END;
 
-      IF ((HMS→(MOUSE(4)))==3)
-      THEN
-        Touch_Zoom();
-      END;
+  REPEAT
 
-      IF ((HMS→(MOUSE(4)))==7)
-      THEN
-        Touch_Zoom();
-      END;
+    IF ((HMS→(MOUSE(4)))==3)
+    THEN
+      Touch_Zoom();
+    END;
 
-      X_AXIS_TOUCH_SHIFT:=(HMS→(MOUSE(0)));
-      Y_AXIS_TOUCH_SHIFT:=(HMS→(MOUSE(1)));
+    IF ((HMS→(MOUSE(4)))==7)
+    THEN
+      Touch_Zoom();
+    END;
 
-      IF X_AXIS_TOUCH_SHIFT==-1 
-      THEN
-        Read_Keyboard();
-      END;
+    X_AXIS_TOUCH_SHIFT:=(HMS→(MOUSE(0)));
+    Y_AXIS_TOUCH_SHIFT:=(HMS→(MOUSE(1)));
 
-      IF Y_AXIS_TOUCH_SHIFT==-1
-      THEN
-        Read_Keyboard();
-      END;
+    IF X_AXIS_TOUCH_SHIFT==-1 THEN RETURN; END;
+    IF Y_AXIS_TOUCH_SHIFT==-1 THEN RETURN; END;
 
-      IF X_AXIS_TOUCH_SHIFT>X_AXIS_TOUCH
-      THEN
-        X_AXIS_SHIFT:=X_AXIS_SHIFT+(X_AXIS_TOUCH_SHIFT-X_AXIS_TOUCH);
-      END;
+    IF X_AXIS_TOUCH_SHIFT>X_AXIS_TOUCH
+    THEN
+      X_AXIS_SHIFT:=X_AXIS_SHIFT+(X_AXIS_TOUCH_SHIFT-X_AXIS_TOUCH);
+    END;
 
-      IF Y_AXIS_TOUCH_SHIFT>Y_AXIS_TOUCH 
-      THEN
-        Y_AXIS_SHIFT:=Y_AXIS_SHIFT+(Y_AXIS_TOUCH_SHIFT-Y_AXIS_TOUCH);
-      END;
+    IF Y_AXIS_TOUCH_SHIFT>Y_AXIS_TOUCH
+    THEN
+      Y_AXIS_SHIFT:=Y_AXIS_SHIFT+(Y_AXIS_TOUCH_SHIFT-Y_AXIS_TOUCH);
+    END;
 
-      IF X_AXIS_TOUCH_SHIFT<X_AXIS_TOUCH
-      THEN
-        X_AXIS_SHIFT:=X_AXIS_SHIFT-(X_AXIS_TOUCH-X_AXIS_TOUCH_SHIFT);
-      END;
+    IF X_AXIS_TOUCH_SHIFT<X_AXIS_TOUCH
+    THEN
+      X_AXIS_SHIFT:=X_AXIS_SHIFT-(X_AXIS_TOUCH-X_AXIS_TOUCH_SHIFT);
+    END;
 
-      IF Y_AXIS_TOUCH_SHIFT<Y_AXIS_TOUCH
-      THEN
-        Y_AXIS_SHIFT:=Y_AXIS_SHIFT-(Y_AXIS_TOUCH-Y_AXIS_TOUCH_SHIFT);
-      END;
+    IF Y_AXIS_TOUCH_SHIFT<Y_AXIS_TOUCH
+    THEN
+      Y_AXIS_SHIFT:=Y_AXIS_SHIFT-(Y_AXIS_TOUCH-Y_AXIS_TOUCH_SHIFT);
+    END;
 
-      Clear_Background();
-      BLIT_P(G1,X_AXIS_SHIFT,Y_AXIS_SHIFT,IMAGE_WIDTH+X_AXIS_SHIFT,IMAGE_HEIGHT+Y_AXIS_SHIFT);
-      X_AXIS_TOUCH:=X_AXIS_TOUCH_SHIFT;
-      Y_AXIS_TOUCH:=Y_AXIS_TOUCH_SHIFT;
+    Clear_Background();
+    BLIT_P(G1,X_AXIS_SHIFT,Y_AXIS_SHIFT,IMAGE_WIDTH+X_AXIS_SHIFT,IMAGE_HEIGHT+Y_AXIS_SHIFT);
+    X_AXIS_TOUCH:=X_AXIS_TOUCH_SHIFT;
+    Y_AXIS_TOUCH:=Y_AXIS_TOUCH_SHIFT;
 
-    UNTIL Y_AXIS_TOUCH_SHIFT==-1;
-  END;
+  UNTIL Y_AXIS_TOUCH_SHIFT==-1;
 END;
 
 
 //----Touch Zoom----
-Touch_Zoom() 
+// Seed TZ_4 from the first sample so the first iteration's delta is 0;
+// the pinch magnitude is |TZ_3 - TZ_4|, not TZ_4 itself.
+Touch_Zoom()
 BEGIN
-  TZ_4:=0;
+  TZ_1:=(HMS→(MOUSE(0)));
+  TZ_2:=(HMS→(MOUSE(5)));
+  TZ_4:=(TZ_2-TZ_1);
   REPEAT
     TZ_1:=(HMS→(MOUSE(0)));
     TZ_2:=(HMS→(MOUSE(5)));
@@ -641,14 +649,14 @@ BEGIN
 
     IF TZ_3>TZ_4
     THEN
-      IMAGE_WIDTH:=IMAGE_WIDTH+((IMAGE_WIDTH/100)*TZ_4*TZ_ZOOM_SENSITIVITY);
-      IMAGE_HEIGHT:=IMAGE_HEIGHT+((IMAGE_HEIGHT/100)*TZ_4*TZ_ZOOM_SENSITIVITY);
+      IMAGE_WIDTH:=IMAGE_WIDTH+((IMAGE_WIDTH/100)*(TZ_3-TZ_4)*TZ_ZOOM_SENSITIVITY);
+      IMAGE_HEIGHT:=IMAGE_HEIGHT+((IMAGE_HEIGHT/100)*(TZ_3-TZ_4)*TZ_ZOOM_SENSITIVITY);
     END;
 
     IF TZ_4>TZ_3
     THEN
-      IMAGE_WIDTH:=IMAGE_WIDTH-((IMAGE_WIDTH/100)*TZ_4*TZ_ZOOM_SENSITIVITY);
-      IMAGE_HEIGHT:=IMAGE_HEIGHT-((IMAGE_HEIGHT/100)*TZ_4*TZ_ZOOM_SENSITIVITY);
+      IMAGE_WIDTH:=IMAGE_WIDTH-((IMAGE_WIDTH/100)*(TZ_4-TZ_3)*TZ_ZOOM_SENSITIVITY);
+      IMAGE_HEIGHT:=IMAGE_HEIGHT-((IMAGE_HEIGHT/100)*(TZ_4-TZ_3)*TZ_ZOOM_SENSITIVITY);
     END;
 
     Clear_Background();
@@ -656,7 +664,6 @@ BEGIN
     TZ_4:=TZ_3;
 
   UNTIL TZ_1==-1;
-  Read_Keyboard();
 END;
 
 

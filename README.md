@@ -2,7 +2,7 @@
 # Gallery
 **Gallery**: The HP Prime PNG/JPG Image Viewer.
 
-![air14iml-ven](Images/cover.png)
+![Gallery app cover](Images/cover.png)
 
 # How to Install & Use Gallery
 1.  **Check Firmware Version**
@@ -104,7 +104,7 @@ You can now enjoy viewing the images in the Gallery app on your HP Prime without
 
 1.  **Download the Repository**
     
-    -   Download this [GitHub repository](https://github.com/mandresve/Gallery) to your local machine.
+    -   Download this [GitHub repository](https://github.com/Bobertsawesome/HPPrime-Gallery) to your local machine.
     -   Extract the ZIP file to a convenient location on your computer.
 2.  **Locate the Gallery.hpappdir Folder**
     
