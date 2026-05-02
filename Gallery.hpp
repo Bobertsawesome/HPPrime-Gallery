@@ -335,12 +335,16 @@ BEGIN
     //Poll Touch Gestures
     Touch_Gestures();
 
-    //Exit REPEAT loop when [ON]/Cancel is pressed (key 46).
-    //(The original code also exited on key 4 with a comment of "ESC",
-    //but key 4 on the HP Prime is [View], not Escape, and the README
-    //documents [ON] as the exit key. The [View] handler is left to the
-    //OS so users can open the app's view menu normally.)
+    //Exit REPEAT loop on [ON]/Cancel (key 46) or [Esc] (key 4).
+    //Per the HP Prime GETKEY reference (en.hpprime.club/docs/reference/GETKEY)
+    //the keymap is: 0=Apps, 1=Symb, 2=Up, 3=Help, 4=Esc, 5=Home, 6=Plot,
+    //7=Left, 8=Right, 9=View, 10=Cas, 11=Num, 12=Down, 13=Menu.
     IF PRESSED_KEY==46
+    THEN
+      STOP_GALLERY:=1;
+    END;
+
+    IF PRESSED_KEY==4
     THEN
       STOP_GALLERY:=1;
     END;
