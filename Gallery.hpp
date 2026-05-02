@@ -324,6 +324,14 @@ BEGIN
       STARTVIEW(-1,1);
     END;
 
+    //Hide App [Apps] — same behavior as [Home]; without this the Apps
+    //key is silently swallowed by the polling loop instead of returning
+    //the user to the regular calculator view / app library.
+    IF PRESSED_KEY==0
+    THEN
+      STARTVIEW(-1,1);
+    END;
+
     //Poll Touch Gestures
     Touch_Gestures();
 
