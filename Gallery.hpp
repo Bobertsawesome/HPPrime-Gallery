@@ -37,6 +37,11 @@ LOCAL X_AXIS_TOUCH,Y_AXIS_TOUCH;
 LOCAL X_AXIS_TOUCH_SHIFT,Y_AXIS_TOUCH_SHIFT;
 LOCAL TZ_1,TZ_2,TZ_3,TZ_4;
 LOCAL TZ_ZOOM_SENSITIVITY:=0.025;
+//Set to 1 by [Apps]/[Home] before they KILL the program. On the next
+//launch START() reads this flag and jumps straight back into the image
+//the user was viewing, then clears it. [ON] is a full exit and does
+//not set this flag.
+LOCAL LAST_VIEW_WAS_IMAGE:=0;
 
 
 //----Methods----
@@ -80,7 +85,7 @@ NumSetScroll_Down() BEGIN END;
 //This dialog must be named START
 //Because it's the main screen
 VIEW "Help",START()
-BEGIN 
+BEGIN
   IF POS(AFiles(),"icon.png")==0
   THEN
     PRINT();
@@ -93,6 +98,24 @@ BEGIN
     THEN
       FILE_LIST:=reverse(FILE_LIST);
     END;
+
+    //If the previous session ended via [Apps]/[Home] (hide-with-resume),
+    //jump straight back into the image. Clear the flag so a subsequent
+    //full exit via [ON] starts fresh at the Help screen on next launch.
+    //CURRENT_FILE is clamped in case files were added/removed between
+    //sessions.
+    IF LAST_VIEW_WAS_IMAGE==1
+    THEN
+      LAST_VIEW_WAS_IMAGE:=0;
+      IF length(FILE_LIST)>0
+      THEN
+        IF CURRENT_FILE>length(FILE_LIST) THEN CURRENT_FILE:=length(FILE_LIST); END;
+        IF CURRENT_FILE<1 THEN CURRENT_FILE:=1; END;
+        Open_File();
+        RETURN;
+      END;
+    END;
+
     STARTVIEW(6,1);
   END;
 END;
@@ -318,22 +341,22 @@ BEGIN
       Center_Fit();
     END;
 
-    //Hide App [Home] — fully terminate the program. STOP_GALLERY alone
-    //isn't enough: after Read_Keyboard returns, control unwinds back
-    //to Open_File_Dialog's REPEAT loop, which would re-issue CHOOSE and
-    //pop the file picker on top of the calculator view. STARTVIEW
-    //navigates to the home view, KILL stops execution before any other
-    //dialog can fire. LOCAL state survives across runs, so re-launching
-    //Gallery from the App Library resumes at the current image.
+    //Hide App [Home] — set the resume flag so the next launch jumps
+    //straight back to this image, then KILL. STARTVIEW alone leaves
+    //the program running and the unwinding code path re-opens the
+    //file picker on top of the calculator view; KILL stops execution
+    //before any other dialog can fire.
     IF PRESSED_KEY==5
     THEN
+      LAST_VIEW_WAS_IMAGE:=1;
       STARTVIEW(-1,1);
       KILL;
     END;
 
-    //Hide App [Apps] — same reasoning as [Home].
+    //Hide App [Apps] — same as [Home].
     IF PRESSED_KEY==0
     THEN
+      LAST_VIEW_WAS_IMAGE:=1;
       STARTVIEW(-1,1);
       KILL;
     END;
@@ -341,15 +364,21 @@ BEGIN
     //Poll Touch Gestures
     Touch_Gestures();
 
-    //Exit REPEAT loop on [ON]/Cancel (key 46) or [Esc] (key 4).
+    //Full exit [ON]/Cancel (key 46) — clears the resume flag and
+    //terminates the program. The next launch starts fresh at the Help
+    //screen.
     //Per the HP Prime GETKEY reference (en.hpprime.club/docs/reference/GETKEY)
     //the keymap is: 0=Apps, 1=Symb, 2=Up, 3=Help, 4=Esc, 5=Home, 6=Plot,
     //7=Left, 8=Right, 9=View, 10=Cas, 11=Num, 12=Down, 13=Menu.
     IF PRESSED_KEY==46
     THEN
-      STOP_GALLERY:=1;
+      LAST_VIEW_WAS_IMAGE:=0;
+      STARTVIEW(-1,1);
+      KILL;
     END;
 
+    //[Esc] (key 4) — back one level: exit the image view and surface
+    //the file picker. Does not fully exit the app; press [ON] for that.
     IF PRESSED_KEY==4
     THEN
       STOP_GALLERY:=1;

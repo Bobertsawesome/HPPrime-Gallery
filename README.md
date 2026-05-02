@@ -58,7 +58,8 @@ You can now enjoy viewing the images in the Gallery app on your HP Prime without
     -   Press the [VIEW] button on your HP Prime calculator to access the app's menu.
 2.  **Exiting the Image Gallery**
     
-    -   To exit from the image Gallery and return to the previous screen or main menu, press the [ON] or [Esc] button.
+    -   Press the [ON] button to fully close the app and return to the calculator's home screen. The next time you launch Gallery you'll land on the Help screen as a fresh session.
+    -   Press the [Esc] button to go back one level — exit the image view and re-open the file picker. Press [Esc] again from the picker to return to the Help screen.
 3.  **Inverting Colors**
     
     -   To invert colors in the displayed image, press the [+/-] button.
@@ -81,9 +82,9 @@ You can now enjoy viewing the images in the Gallery app on your HP Prime without
 7.  **Restoring Zoom/Pan to Default**
     
     -   If you have zoomed in or panned the image and want to reset it to the default view, press the [5] button. Pressing [5] again toggles fit-to-screen mode on (expands smaller images to fill the screen) and off.
-8.  **Exiting to the Calculator**
+8.  **Hiding the Gallery (with resume)**
     
-    -   To exit the Gallery and return to the calculator's home screen, press the [HOME] or [Apps] button. The app terminates cleanly and the calculator keyboard is fully usable again. Re-launch Gallery from the Application Library to resume browsing.
+    -   Press the [HOME] or [Apps] button to hide the Gallery and use the calculator normally. The app terminates cleanly so the keyboard is fully responsive on the home screen. The next time you re-launch Gallery from the Application Library it will jump straight back into the image you were viewing. Use [ON] instead if you want a full exit (next launch starts at the Help screen).
 
 # Tips and Tricks
 1.  **Image Compression for Upload**
@@ -153,12 +154,18 @@ Remember to respect any licensing restrictions associated with the original Gall
 -   Fixed: Unbounded recursion when a finger is lifted during a touch
     pan or pinch gesture; the touch handlers now return cleanly
     instead of re-entering the keyboard polling loop.
--   Fixed: Pressing [Apps] or [HOME] now cleanly terminates the app
-    via STARTVIEW + KILL, so the calculator's home screen is fully
-    usable. Previously the polling loop kept running in the background
-    (any keystroke bounced you back into the image), and unwinding
-    through Open_File_Dialog re-opened the file picker on top of the
-    calculator view.
+-   Changed: Exit-key behavior split by intent.
+    -   [Apps] / [HOME] hide the gallery with auto-resume — the app
+        terminates cleanly so the calculator is fully usable, and
+        re-launching Gallery jumps straight back to the image you
+        were viewing.
+    -   [ON] is now the only key that fully exits — next launch
+        starts fresh at the Help screen.
+    -   [Esc] still goes back one level (image view → file picker).
+    Previously [Apps]/[HOME] left the polling loop running in the
+    background (any keystroke bounced you back into the image), and
+    unwinding through Open_File_Dialog re-opened the file picker on
+    top of the calculator view.
 -   Fixed: Pressing [DPad Right] at the last image / [DPad Left] at
     the first image no longer re-loads the same image.
 -   Fixed: "Delete All Files" now reliably iterates the file list
