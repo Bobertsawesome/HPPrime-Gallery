@@ -318,25 +318,24 @@ BEGIN
       Center_Fit();
     END;
 
-    //Hide App [Home] — STARTVIEW alone isn't enough: the polling loop
-    //below keeps running, so the next key the user presses on the
-    //calculator gets swallowed and bounces them back into the image
-    //(e.g. pressing 5 triggers Center_Fit). Set STOP_GALLERY first so
-    //Read_Keyboard returns cleanly, freeing the keyboard for the OS.
-    //LOCAL state is preserved, so re-launching Gallery from the App
-    //Library resumes at the current image.
+    //Hide App [Home] — fully terminate the program. STOP_GALLERY alone
+    //isn't enough: after Read_Keyboard returns, control unwinds back
+    //to Open_File_Dialog's REPEAT loop, which would re-issue CHOOSE and
+    //pop the file picker on top of the calculator view. STARTVIEW
+    //navigates to the home view, KILL stops execution before any other
+    //dialog can fire. LOCAL state survives across runs, so re-launching
+    //Gallery from the App Library resumes at the current image.
     IF PRESSED_KEY==5
     THEN
-      STOP_GALLERY:=1;
       STARTVIEW(-1,1);
+      KILL;
     END;
 
-    //Hide App [Apps] — same reasoning as [Home]; otherwise calculator
-    //keystrokes drag the user back into the gallery viewer.
+    //Hide App [Apps] — same reasoning as [Home].
     IF PRESSED_KEY==0
     THEN
-      STOP_GALLERY:=1;
       STARTVIEW(-1,1);
+      KILL;
     END;
 
     //Poll Touch Gestures
