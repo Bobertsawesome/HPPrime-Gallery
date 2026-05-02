@@ -318,17 +318,24 @@ BEGIN
       Center_Fit();
     END;
 
-    //Hide App [Home]
+    //Hide App [Home] — STARTVIEW alone isn't enough: the polling loop
+    //below keeps running, so the next key the user presses on the
+    //calculator gets swallowed and bounces them back into the image
+    //(e.g. pressing 5 triggers Center_Fit). Set STOP_GALLERY first so
+    //Read_Keyboard returns cleanly, freeing the keyboard for the OS.
+    //LOCAL state is preserved, so re-launching Gallery from the App
+    //Library resumes at the current image.
     IF PRESSED_KEY==5
     THEN
+      STOP_GALLERY:=1;
       STARTVIEW(-1,1);
     END;
 
-    //Hide App [Apps] — same behavior as [Home]; without this the Apps
-    //key is silently swallowed by the polling loop instead of returning
-    //the user to the regular calculator view / app library.
+    //Hide App [Apps] — same reasoning as [Home]; otherwise calculator
+    //keystrokes drag the user back into the gallery viewer.
     IF PRESSED_KEY==0
     THEN
+      STOP_GALLERY:=1;
       STARTVIEW(-1,1);
     END;
 
