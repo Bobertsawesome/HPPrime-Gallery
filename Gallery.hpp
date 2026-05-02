@@ -682,8 +682,16 @@ END;
 
 
 //----Touch Zoom----
-// Seed TZ_4 from the first sample so the first iteration's delta is 0;
-// the pinch magnitude is |TZ_3 - TZ_4|, not TZ_4 itself.
+// Constant-rate pinch zoom: each iteration steps the image by
+// TZ_4 * sensitivity %, regardless of how fast the fingers are
+// moving. This is robust to MOUSE sampling noise — a delta-based
+// magnitude (zoom proportional to TZ_3 - TZ_4) made the image
+// jitter back and forth on every noisy sample.
+//
+// TZ_4 is seeded from the first sample so the very first iteration
+// has a non-zero magnitude (the original initialised TZ_4 to 0,
+// wasting the first iteration entirely). Direction (in vs out) still
+// comes from comparing the current finger distance to the previous.
 Touch_Zoom()
 BEGIN
   TZ_1:=(HMS→(MOUSE(0)));
@@ -696,14 +704,14 @@ BEGIN
 
     IF TZ_3>TZ_4
     THEN
-      IMAGE_WIDTH:=IMAGE_WIDTH+((IMAGE_WIDTH/100)*(TZ_3-TZ_4)*TZ_ZOOM_SENSITIVITY);
-      IMAGE_HEIGHT:=IMAGE_HEIGHT+((IMAGE_HEIGHT/100)*(TZ_3-TZ_4)*TZ_ZOOM_SENSITIVITY);
+      IMAGE_WIDTH:=IMAGE_WIDTH+((IMAGE_WIDTH/100)*TZ_4*TZ_ZOOM_SENSITIVITY);
+      IMAGE_HEIGHT:=IMAGE_HEIGHT+((IMAGE_HEIGHT/100)*TZ_4*TZ_ZOOM_SENSITIVITY);
     END;
 
     IF TZ_4>TZ_3
     THEN
-      IMAGE_WIDTH:=IMAGE_WIDTH-((IMAGE_WIDTH/100)*(TZ_4-TZ_3)*TZ_ZOOM_SENSITIVITY);
-      IMAGE_HEIGHT:=IMAGE_HEIGHT-((IMAGE_HEIGHT/100)*(TZ_4-TZ_3)*TZ_ZOOM_SENSITIVITY);
+      IMAGE_WIDTH:=IMAGE_WIDTH-((IMAGE_WIDTH/100)*TZ_4*TZ_ZOOM_SENSITIVITY);
+      IMAGE_HEIGHT:=IMAGE_HEIGHT-((IMAGE_HEIGHT/100)*TZ_4*TZ_ZOOM_SENSITIVITY);
     END;
 
     Clear_Background();

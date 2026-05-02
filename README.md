@@ -148,9 +148,13 @@ Remember to respect any licensing restrictions associated with the original Gall
 # Changelog
 **02-05-26 - Fork patch (Bobertsawesome/HPPrime-Gallery).**
 
--   Fixed: Touch-zoom magnitude bug — the first iteration of a pinch
-    gesture no longer produces zero zoom, and subsequent iterations
-    use the correct delta between finger distances.
+-   Fixed: Touch-zoom no longer wastes the first iteration of a pinch
+    gesture. The original initialised the previous-distance accumulator
+    to 0, so the first sample multiplied by 0 produced no zoom; it's
+    now seeded from the first sample. The constant-rate per-iteration
+    behaviour (which is robust to MOUSE sampling noise) is preserved —
+    an earlier delta-based attempt made the image jitter on every
+    noisy sample.
 -   Fixed: Unbounded recursion when a finger is lifted during a touch
     pan or pinch gesture; the touch handlers now return cleanly
     instead of re-entering the keyboard polling loop.
